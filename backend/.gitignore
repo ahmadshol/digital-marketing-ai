@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.production
+
+# Virtual environment
+venv/
+env/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Model files
+*.joblib
+*.pkl
+*.model
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Coverage reports
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
