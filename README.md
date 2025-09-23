@@ -1,12 +1,12 @@
+# Client analisis Digital Marketing - Dokumentasi Instalasi & Menjalankan Sistem 🙌
+Sistem Analisis Potensi Klien adalah aplikasi web yang menggunakan AI (Random Forest) untuk menganalisis potensi bisnis klien berdasarkan data profil dan transaksi. Sistem menghasilkan skor potensi 0-100, segmentasi, prioritas, dan rekomendasi marketing.😉
+
+
 # Project structure:
 
 - backend: Python backend
 - frontend: React frontend
-
-# Maestro Suspension Web - Dokumentasi Instalasi & Menjalankan Sistem 🙌
-Selamat datang di repository Maestro Suspension!
-Berikut adalah panduan lengkap untuk menjalankan project React JS ini dari awal di lokal Anda.😉
-
+  
  **1. Clone Repository**
 
 ```bash
@@ -36,8 +36,7 @@ git --version
 # Output: git version 2.0.0 atau lebih tinggi
 ```
 
-**3. Setup Backend **
-
+**3. Setup Backend**
 ```bash
 
 # Masuk ke directory backend
@@ -245,7 +244,7 @@ To create a production build, use npm run build.
 
 **Format Csv Yang Benar**
 
-***File CSV harus mengandung kolom: ***
+***File CSV harus mengandung kolom:***
 
 ```csv
 nama,nomor_telepon,kategori_usaha,lokasi,riwayat_transaksi
