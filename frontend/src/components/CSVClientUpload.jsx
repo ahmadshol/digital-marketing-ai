@@ -5,16 +5,30 @@ const CSVClientUpload = () => {
   const [uploads, setUploads] = useState([]);
   const [selectedUpload, setSelectedUpload] = useState(null);
   const [results, setResults] = useState([]);
+  const [filteredResults, setFilteredResults] = useState([]); // Hasil yang difilter
   const [processing, setProcessing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState(""); // State untuk pencarian
 
   // Load uploads on component mount
   useEffect(() => {
     fetchUploads();
   }, []);
+
+  // Filter results ketika searchTerm atau results berubah
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredResults(results);
+    } else {
+      const filtered = results.filter(item =>
+        item.client_name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredResults(filtered);
+    }
+  }, [searchTerm, results]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -171,7 +185,9 @@ const CSVClientUpload = () => {
       // Clear results if viewing the deleted upload
       if (selectedUpload && selectedUpload.id === uploadId) {
         setResults([]);
+        setFilteredResults([]);
         setSelectedUpload(null);
+        setSearchTerm(""); // Reset pencarian
       }
     } catch (error) {
       console.error("Error deleting upload:", error);
@@ -186,6 +202,7 @@ const CSVClientUpload = () => {
   const viewResults = async (uploadId) => {
     setErrorMessage("");
     setSuccessMessage("");
+    setSearchTerm(""); // Reset pencarian saat melihat hasil baru
 
     try {
       const response = await fetch(
@@ -198,6 +215,7 @@ const CSVClientUpload = () => {
 
       const data = await response.json();
       setResults(data.results);
+      setFilteredResults(data.results); // Set filtered results sama dengan results awal
       setSelectedUpload(data.upload_info);
     } catch (error) {
       console.error("Error fetching results:", error);
@@ -216,7 +234,7 @@ const CSVClientUpload = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `client_analysis_${uploadId}.csv`;
+        a.download = `client_analysis_complete_${uploadId}.csv`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -228,21 +246,6 @@ const CSVClientUpload = () => {
     } catch (error) {
       console.error("Error downloading results:", error);
       setErrorMessage("Error downloading results");
-    }
-  };
-
-  const debugUpload = async (uploadId) => {
-    try {
-      const response = await fetch(
-        `http://localhost:5000/api/debug/upload/${uploadId}`
-      );
-      const data = await response.json();
-      console.log("Debug upload:", data);
-      alert(
-        `Debug Info: Upload exists: ${data.upload_exists}, Results: ${data.results_count}`
-      );
-    } catch (error) {
-      console.error("Error debugging upload:", error);
     }
   };
 
@@ -262,6 +265,14 @@ const CSVClientUpload = () => {
   const clearMessages = () => {
     setErrorMessage("");
     setSuccessMessage("");
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
   };
 
   return (
@@ -292,7 +303,7 @@ const CSVClientUpload = () => {
         <p>
           CSV harus mengandung kolom:{" "}
           <strong>
-            nama, nomor_telepon, kategori_usaha, lokasi, riwayat_transaksi
+            nama, nomor_telepon, kategori_usaha, lokasi, rating , jumlah_ulasan, email, website
           </strong>
         </p>
 
@@ -325,7 +336,7 @@ const CSVClientUpload = () => {
               <tr>
                 <th>Filename</th>
                 <th>Upload Date</th>
-                <th>Rows</th>
+                <th>Clients</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -335,7 +346,7 @@ const CSVClientUpload = () => {
                 <tr key={upload.id}>
                   <td>{upload.original_name}</td>
                   <td>{new Date(upload.created_at).toLocaleDateString()}</td>
-                  <td>{upload.total_rows} rows</td>
+                  <td>{upload.total_rows} client</td>
                   <td>{getStatusBadge(upload.status)}</td>
                   <td>
                     <div className="action-buttons">
@@ -374,13 +385,6 @@ const CSVClientUpload = () => {
                       >
                         {deleting ? "Deleting..." : "Delete"}
                       </button>
-                      <button
-                        onClick={() => debugUpload(upload.id)}
-                        className="btn-debug"
-                        title="Debug info"
-                      >
-                        Debug
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -403,6 +407,31 @@ const CSVClientUpload = () => {
             >
               {deleting ? "Deleting..." : "Hapus Analisis Ini"}
             </button>
+          </div>
+
+          {/* Search Bar */}
+          <div className="search-container">
+            <div className="search-box">
+              <input
+                type="text"
+                placeholder="Cari nama klien..."
+                value={searchTerm}
+                onChange={handleSearchChange}
+                className="search-input"
+              />
+              {searchTerm && (
+                <button onClick={clearSearch} className="clear-search">
+                  ×
+                </button>
+              )}
+              <span className="search-icon">🔍</span>
+            </div>
+            <div className="search-info">
+              Menampilkan {filteredResults.length} dari {results.length} hasil
+              {searchTerm && (
+                <span className="search-term"> untuk "{searchTerm}"</span>
+              )}
+            </div>
           </div>
 
           <div className="results-summary">
@@ -445,8 +474,12 @@ const CSVClientUpload = () => {
                 <tr>
                   <th>Rank</th>
                   <th>Nama Klien</th>
+                  <th>Email</th>
+                  <th>Website</th>
                   <th>Kategori Usaha</th>
                   <th>Lokasi</th>
+                  <th>Rating</th>
+                  <th>Ulasan</th>
                   <th>Skor Potensi</th>
                   <th>Segmentasi</th>
                   <th>Prioritas</th>
@@ -454,17 +487,63 @@ const CSVClientUpload = () => {
                 </tr>
               </thead>
               <tbody>
-                {results.map((result, index) => (
+                {filteredResults.map((result, index) => (
                   <tr key={result.id}>
                     <td className="rank-cell">{index + 1}</td>
-                    <td>{result.client_name}</td>
+                    <td>
+                      <div className="client-info">
+                        <div className="client-name">{result.client_name}</div>
+                        {result.phone_number && (
+                          <div className="client-phone">{result.phone_number}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td>
+                      {result.email ? (
+                        <a href={`mailto:${result.email}`} className="email-link">
+                          {result.email}
+                        </a>
+                      ) : (
+                        <span className="no-data">-</span>
+                      )}
+                    </td>
+                    <td>
+                      {result.website ? (
+                        <a 
+                          href={result.website.startsWith('http') ? result.website : `https://${result.website}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="website-link"
+                        >
+                          {result.website}
+                        </a>
+                      ) : (
+                        <span className="no-data">-</span>
+                      )}
+                    </td>
                     <td>{result.business_category}</td>
                     <td>{result.location}</td>
                     <td>
+                      <div className="rating-display">
+                        <span className="rating-value">{result.rating}</span>
+                        <div className="rating-stars">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={star <= result.rating ? 'star filled' : 'star'}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="review-count">{result.jumlah_ulasan} ulasan</span>
+                    </td>
+                    <td>
                       <div className="score-cell">
-                        <span className="score-number">
-                          {result.potential_score}
-                        </span>
+                        <span className="score-number">{result.potential_score}</span>
                         <div className="score-bar">
                           <div
                             className="score-fill"
@@ -486,6 +565,15 @@ const CSVClientUpload = () => {
                 ))}
               </tbody>
             </table>
+
+            {filteredResults.length === 0 && searchTerm && (
+              <div className="no-results">
+                <p>Tidak ditemukan klien dengan nama "{searchTerm}"</p>
+                <button onClick={clearSearch} className="btn-clear-search">
+                  Tampilkan Semua
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="results-actions">
@@ -498,7 +586,9 @@ const CSVClientUpload = () => {
             <button
               onClick={() => {
                 setResults([]);
+                setFilteredResults([]);
                 setSelectedUpload(null);
+                setSearchTerm("");
               }}
               className="btn-clear"
             >

@@ -265,7 +265,7 @@ button:disabled {
 .score-cell {
   display: flex;
   align-items: center;
-  gap: 10px;
+  width: 100px;
 }
 
 .score-number {
@@ -286,6 +286,96 @@ button:disabled {
   background: linear-gradient(90deg, #4caf50, #8bc34a);
   border-radius: 4px;
   transition: width 0.3s ease;
+}
+
+/* Tambahkan di App.css */
+.client-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.client-name {
+  font-weight: 600;
+}
+
+.client-phone {
+  font-size: 12px;
+  color: #666;
+}
+
+.email-link {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.email-link:hover {
+  text-decoration: underline;
+}
+
+.website-link {
+  color: #28a745;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.website-link:hover {
+  text-decoration: underline;
+}
+
+.no-data {
+  color: #999;
+  font-style: italic;
+}
+
+.rating-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating-value {
+  font-weight: bold;
+  min-width: 30px;
+}
+
+.rating-stars {
+  display: flex;
+}
+
+.star {
+  color: #ddd;
+  font-size: 14px;
+}
+
+.star.filled {
+  color: #ffc107;
+}
+
+.review-count {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Responsive design untuk tabel */
+@media (max-width: 1200px) {
+  .results-table {
+    font-size: 12px;
+  }
+  
+  .results-table th,
+  .results-table td {
+    padding: 6px;
+  }
+}
+
+@media (max-width: 768px) {
+  .results-table-container {
+    overflow-x: auto;
+  }
+  
+  .results-table {
+    min-width: 1000px;
+  }
 }
 
 /* Responsive Design */
@@ -618,5 +708,111 @@ button:disabled {
   
   .results-actions {
     flex-direction: column;
+  }
+}
+
+
+
+/* Tambahkan di file CSS Anda */
+.search-container {
+  margin: 20px 0;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.search-box {
+  position: relative;
+  max-width: 400px;
+  margin-bottom: 10px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 40px 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 25px;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+}
+
+.clear-search {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clear-search:hover {
+  color: #dc3545;
+}
+
+.search-info {
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.search-term {
+  font-weight: bold;
+  color: #495057;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+}
+
+.no-results p {
+  margin-bottom: 15px;
+}
+
+.btn-clear-search {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-clear-search:hover {
+  background: #5a6268;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .search-box {
+    max-width: 100%;
+  }
+  
+  .search-info {
+    text-align: center;
   }
 }

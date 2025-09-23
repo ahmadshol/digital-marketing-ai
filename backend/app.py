@@ -57,125 +57,24 @@ def allowed_file(filename):
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def extract_features_from_data(client_data):
-    """Extract features from client data dengan algoritma yang lebih akurat"""
+    """Extract features from client data berdasarkan rating"""
     features = {}
     
     nama = client_data['nama'] or ''
     nomor = client_data['nomor_telepon'] or ''
     kategori = client_data['kategori_usaha'].lower()
     lokasi = client_data['lokasi'].lower()
-    riwayat = client_data['riwayat_transaksi'] or ''
+    rating = float(client_data.get('rating', 0))
+    jumlah_ulasan = int(client_data.get('jumlah_ulasan', 0))
     
-    # 1. FREKUENSI TRANSAKSI (Weight: 25%)
-    transaction_count = 0
-    # Pattern matching untuk berbagai format
-    patterns = [
-        r'(\d+)\s*(transaksi|trx|tx|order|pembelian|purchase)',
-        r'(rata-rata|rata|sekitar|about|approx)\s*(\d+)\s*(transaksi|trx)',
-        r'(\d+)\s*(kali)\s*(dalam|per|every)\s*(bulan|month|minggu|week|hari|day)'
-    ]
+    # 1. RATING (Weight: 35%)
+    features['rating'] = max(0, min(5, rating))  # Ensure 0-5 range
     
-    for pattern in patterns:
-        matches = re.findall(pattern, riwayat.lower())
-        for match in matches:
-            if match[0].isdigit():
-                transaction_count += int(match[0])
-            elif len(match) > 1 and match[1].isdigit():
-                transaction_count += int(match[1])
+    # 2. JUMLAH ULASAN (Weight: 25%)
+    # Normalize: 0-1000 ulasan → 0-100 scale
+    features['jumlah_ulasan'] = min(jumlah_ulasan, 1000)  # Cap at 1000
     
-    # Fallback: count keywords
-    if transaction_count == 0:
-        transaction_count = (riwayat.lower().count('transaksi') + 
-                           riwayat.lower().count('beli') + 
-                           riwayat.lower().count('pembelian') + 
-                           riwayat.lower().count('order'))
-    
-    features['frekuensi_transaksi'] = min(transaction_count, 50)  # Cap at 50
-    
-    # 2. NILAI TRANSAKSI (Weight: 25%)
-    nilai_rata_rata = 0
-    # Pattern matching untuk nilai uang
-    money_patterns = [
-        r'rp\s*[\.]?\s*(\d+[\.,]?\d*)[\s]*(ribu|rb|juta|jt|m)',
-        r'(\d+[\.,]?\d*)\s*(ribu|rb|juta|jt|m)\s*(rupiah|rp)',
-        r'nilai\s*(rata-rata|rata)\s*(\d+[\.,]?\d*)\s*(ribu|rb|juta|jt|m)',
-        r'(\d+[\.,]?\d*)\s*(juta|jt|m)\s*per\s*(transaksi|order)'
-    ]
-    
-    detected_values = []
-    for pattern in money_patterns:
-        matches = re.findall(pattern, riwayat.lower())
-        for match in matches:
-            try:
-                nilai = float(match[0].replace(',', '.'))
-                multiplier = 1
-                if any(x in match[1] for x in ['juta', 'jt', 'm']):
-                    multiplier = 1000000
-                elif any(x in match[1] for x in ['ribu', 'rb']):
-                    multiplier = 1000
-                detected_values.append(nilai * multiplier)
-            except:
-                continue
-    
-    if detected_values:
-        nilai_rata_rata = sum(detected_values) / len(detected_values)
-    else:
-        # Heuristic fallback
-        if 'juta' in riwayat.lower() or 'jt' in riwayat.lower():
-            nilai_rata_rata = 2500000
-        elif 'ribu' in riwayat.lower() or 'rb' in riwayat.lower():
-            nilai_rata_rata = 750000
-        else:
-            nilai_rata_rata = 500000
-    
-    features['nilai_transaksi_rata_rata'] = nilai_rata_rata
-    
-    # 3. LAMA USAHA (Weight: 15%)
-    lama_usaha = 12  # Default 1 year
-    
-    time_patterns = [
-        r'(\d+)\s*(tahun|thn|th)',
-        r'(\d+)\s*(bulan|bln)',
-        r'sudah\s*(\d+)\s*(tahun|thn|th)',
-        r'berjalan\s*(\d+)\s*(tahun|thn|th|bulan|bln)'
-    ]
-    
-    for pattern in time_patterns:
-        matches = re.findall(pattern, riwayat.lower())
-        for match in matches:
-            try:
-                value = int(match[0])
-                if any(x in match[1] for x in ['tahun', 'thn', 'th']):
-                    lama_usaha = value * 12
-                elif any(x in match[1] for x in ['bulan', 'bln']):
-                    lama_usaha = value
-                break
-            except:
-                continue
-    
-    features['lama_usaha_bulan'] = min(lama_usaha, 120)  # Cap at 10 years
-    
-    # 4. LUAS AREA (Weight: 10%)
-    luas_area = 50.0  # Default 50m²
-    
-    area_patterns = [
-        r'(\d+)\s*(m2|m²|meter|meter persegi)',
-        r'luas\s*(\d+)\s*(m2|m²|meter)',
-        r'(\d+)\s*(m2|m²)\s*(luas|area)'
-    ]
-    
-    for pattern in area_patterns:
-        matches = re.findall(pattern, riwayat.lower())
-        for match in matches:
-            try:
-                luas_area = float(match[0])
-                break
-            except:
-                continue
-    
-    features['luas_area_usaha'] = min(luas_area, 500)  # Cap at 500m²
-    
-    # 5-7. LOKASI-BASED FEATURES (Weight: 25% total)
+    # 3. LOKASI-BASED FEATURES (Weight: 40% total)
     # Predefined scoring dictionaries
     location_scores = {
         'jakarta': {'potensi': 9, 'kepadatan': 9, 'daya_beli': 8},
@@ -242,7 +141,7 @@ def extract_features_from_data(client_data):
         'retail': 4, 'toko': 4, 'store': 4,
         'jasa': 3, 'service': 3,
         'otomotif': 4, 'automotive': 4,
-        'pendidikan': 6, 'education': 6, 'sekolah': 5
+        'pendidikan': 6, 'education': 6, 'sekolah': 5,
     }
     
     features['kategori_bonus'] = kategori_bonus.get(kategori, 0)
@@ -250,32 +149,24 @@ def extract_features_from_data(client_data):
     return features
 
 def analyze_potential(features):
-    """Analyze client potential menggunakan weighted scoring system"""
+    """Analyze client potential menggunakan weighted scoring system berdasarkan rating"""
     # Weighting system
     weights = {
-        'frekuensi_transaksi': 0.25,      # 25%
-        'nilai_transaksi_rata_rata': 0.25, # 25%
-        'lama_usaha_bulan': 0.15,         # 15%
-        'luas_area_usaha': 0.10,          # 10%
-        'potensi_bisnis_lokasi': 0.08,    # 8%
-        'kepadatan_penduduk': 0.07,       # 7%
-        'daya_beli_lokasi': 0.10          # 10%
+        'rating': 0.35,                   # 35% - Rating 0-5
+        'jumlah_ulasan': 0.25,            # 25% - Jumlah ulasan
+        'potensi_bisnis_lokasi': 0.15,    # 15% - Potensi lokasi
+        'kepadatan_penduduk': 0.10,       # 10% - Kepadatan
+        'daya_beli_lokasi': 0.15          # 15% - Daya beli
     }
     
     # Normalize each feature to 0-100 scale
     normalized_features = {}
     
-    # Frekuensi transaksi (0-50 → 0-100)
-    normalized_features['frekuensi_transaksi'] = (features['frekuensi_transaksi'] / 50) * 100
+    # Rating (0-5 → 0-100)
+    normalized_features['rating'] = (features['rating'] / 5) * 100
     
-    # Nilai transaksi (0-10M → 0-100)
-    normalized_features['nilai_transaksi_rata_rata'] = min((features['nilai_transaksi_rata_rata'] / 10000000) * 100, 100)
-    
-    # Lama usaha (0-120 bulan → 0-100)
-    normalized_features['lama_usaha_bulan'] = (features['lama_usaha_bulan'] / 120) * 100
-    
-    # Luas area (0-500 m² → 0-100)
-    normalized_features['luas_area_usaha'] = (features['luas_area_usaha'] / 500) * 100
+    # Jumlah ulasan (0-1000 → 0-100)
+    normalized_features['jumlah_ulasan'] = (features['jumlah_ulasan'] / 1000) * 100
     
     # Location features (already 0-10 scale → 0-100)
     normalized_features['potensi_bisnis_lokasi'] = features['potensi_bisnis_lokasi'] * 10
@@ -296,7 +187,7 @@ def analyze_potential(features):
     # Ensure score is within 0-100 range
     final_score = max(0, min(100, final_score))
     
-    # Determine segmentation based on business maturity
+    # Determine segmentation based on rating and business factors
     segmentasi = determine_segmentation(final_score, features)
     
     # Determine priority
@@ -318,20 +209,24 @@ def analyze_potential(features):
     }
 
 def apply_business_rules(score, features):
-    """Apply business rules adjustments"""
+    """Apply business rules adjustments berdasarkan rating"""
     adjusted_score = score
     
-    # Bonus for premium clients
-    if features['nilai_transaksi_rata_rata'] > 5000000:  # Above 5 juta
+    # Bonus for high rating
+    if features['rating'] >= 4.5:  # Rating sangat tinggi
+        adjusted_score += 12
+    elif features['rating'] >= 4.0:  # Rating tinggi
         adjusted_score += 8
-    elif features['nilai_transaksi_rata_rata'] > 2000000:  # Above 2 juta
-        adjusted_score += 5
-    
-    # Bonus for established business
-    if features['lama_usaha_bulan'] > 60:  # More than 5 years
-        adjusted_score += 7
-    elif features['lama_usaha_bulan'] > 36:  # More than 3 years
+    elif features['rating'] >= 3.5:  # Rating baik
         adjusted_score += 4
+    
+    # Bonus for many reviews (social proof)
+    if features['jumlah_ulasan'] > 500:  # Ulasan sangat banyak
+        adjusted_score += 10
+    elif features['jumlah_ulasan'] > 200:  # Ulasan banyak
+        adjusted_score += 6
+    elif features['jumlah_ulasan'] > 50:  # Ulasan cukup
+        adjusted_score += 3
     
     # Bonus for premium location
     if features['potensi_bisnis_lokasi'] >= 80:  # High potential location
@@ -345,59 +240,73 @@ def apply_business_rules(score, features):
     if features['daya_beli_lokasi'] >= 80:  # High purchasing power
         adjusted_score += 5
     
-    # Penalty for very new business
-    if features['lama_usaha_bulan'] < 6:  # Less than 6 months
+    # Penalty for low rating
+    if features['rating'] < 2.0:  # Rating sangat rendah
+        adjusted_score -= 15
+    elif features['rating'] < 3.0:  # Rating rendah
+        adjusted_score -= 8
+    
+    # Penalty for very few reviews
+    if features['jumlah_ulasan'] < 10:  # Very few reviews
         adjusted_score -= 5
     
     return min(100, adjusted_score)  # Cap at 100
 
 def determine_segmentation(score, features):
-    """Determine segmentation based on multiple factors"""
-    # Base segmentation on score
+    """Determine segmentation based on rating and business factors"""
+    # Base segmentation on score dengan pertimbangan rating
     if score >= 85:
-        return "High-Value - Potensi Besar"
+        return "Premium - Rating Tinggi"
     elif score >= 70:
-        return "Expert - Berpengalaman"
+        if features['rating'] >= 4.0:
+            return "Expert - Berpengalaman & Terpercaya"
+        else:
+            return "Menengah - Berkembang"
     elif score >= 50:
-        return "Menengah - Stabil"
+        return "Standard - Potensi Berkembang"
     else:
-        return "Pemula - Potensi Berkembang"
+        return "Pemula - Perlu Pembinaan"
 
 def get_recommendation_category(score, segment, features):
-    """Get personalized recommendation based on multiple factors"""
+    """Get personalized recommendation based on rating factors"""
     recommendations = {
-        'High-Value - Potensi Besar': [
-            "Prioritas Utama - Pendekatan Personal Executive",
-            "Program Khusus VIP - Dedicated Account Manager",
-            "Premium Service Package - Custom Solution"
+        'Premium - Rating Tinggi': [
+            "Prioritas Utama - Program Exclusive",
+            "Partnership Premium - Kolaborasi Strategis",
+            "VIP Treatment - Layanan Prioritas"
         ],
-        'Expert - Berpengalaman': [
-            "Prioritas Menengah - Campaign Khusus Growth",
-            "Business Development Program - Strategic Partnership",
-            "Value-Added Services Package"
+        'Expert - Berpengalaman & Terpercaya': [
+            "Prioritas Menengah - Program Growth",
+            "Business Expansion - Pengembangan Jangkauan", 
+            "Loyalty Program - Program Loyalitas"
         ],
-        'Menengah - Stabil': [
-            "Prioritas Standard - Targeted Marketing Campaign",
-            "Business Optimization Program - Efficiency Focus",
-            "Standard Service Package with Upsell Opportunities"
+        'Menengah - Berkembang': [
+            "Prioritas Standard - Program Pengembangan",
+            "Quality Improvement - Peningkatan Kualitas",
+            "Marketing Support - Dukungan Pemasaran"
         ],
-        'Pemula - Potensi Berkembang': [
-            "Prioritas Nurturing - Education & Development",
-            "Starter Program - Basic Support Package",
-            "Growth Foundation Program - Capacity Building"
+        'Standard - Potensi Berkembang': [
+            "Basic Support - Dukungan Dasar",
+            "Training Program - Program Pelatihan",
+            "Mentorship - Program Pendampingan"
+        ],
+        'Pemula - Perlu Pembinaan': [
+            "Starter Package - Paket Pemula",
+            "Foundation Building - Pembangunan Dasar",
+            "Basic Guidance - Panduan Dasar"
         ]
     }
     
     # Select recommendation based on segment
     segment_recommendations = recommendations.get(segment, [
-        "Program Development - Custom Approach"
+        "Custom Program - Program Khusus"
     ])
     
-    # Further customize based on business characteristics
-    if features['nilai_transaksi_rata_rata'] > 3000000:
-        return segment_recommendations[0] + " dengan Focus High-Value"
-    elif features['lama_usaha_bulan'] > 24:
-        return segment_recommendations[0] + " dengan Established Business Focus"
+    # Further customize based on rating characteristics
+    if features['rating'] >= 4.5:
+        return segment_recommendations[0] + " (Rating Excellent)"
+    elif features['rating'] >= 4.0:
+        return segment_recommendations[0] + " (Rating Very Good)"
     else:
         return segment_recommendations[0]
 
@@ -489,7 +398,7 @@ def get_clients():
 
 @app.route('/api/clients', methods=['POST'])
 def add_client():
-    """Add a new client"""
+    """Add a new client dengan rating"""
     try:
         data = request.get_json()
         if not data:
@@ -500,8 +409,17 @@ def add_client():
             'nomor_telepon': data.get('nomor_telepon', ''),
             'kategori_usaha': data.get('kategori_usaha', ''),
             'lokasi': data.get('lokasi', ''),
-            'riwayat_transaksi': data.get('riwayat_transaksi', '')
+            'rating': float(data.get('rating', 0)),
+            'jumlah_ulasan': int(data.get('jumlah_ulasan', 0))
         }
+        
+        # Validate rating
+        if client_data['rating'] < 0 or client_data['rating'] > 5:
+            return jsonify({'error': 'Rating must be between 0-5'}), 400
+        
+        # Validate jumlah_ulasan
+        if client_data['jumlah_ulasan'] < 0:
+            return jsonify({'error': 'Jumlah ulasan cannot be negative'}), 400
         
         # Extract features and analyze
         features = extract_features_from_data(client_data)
@@ -513,13 +431,14 @@ def add_client():
         
         # Insert client
         cursor.execute(
-            "INSERT INTO clients (nama, nomor_telepon, kategori_usaha, lokasi, riwayat_transaksi) VALUES (%s, %s, %s, %s, %s)",
+            "INSERT INTO clients (nama, nomor_telepon, kategori_usaha, lokasi, rating, jumlah_ulasan) VALUES (%s, %s, %s, %s, %s, %s)",
             (
                 client_data['nama'],
                 client_data['nomor_telepon'],
                 client_data['kategori_usaha'],
                 client_data['lokasi'],
-                client_data['riwayat_transaksi']
+                client_data['rating'],
+                client_data['jumlah_ulasan']
             )
         )
         client_id = cursor.lastrowid
@@ -527,13 +446,14 @@ def add_client():
         # Insert features
         cursor.execute("""
             INSERT INTO features 
-            (client_id, frekuensi_transaksi, nilai_transaksi_rata_rata, lama_usaha_bulan, 
-             luas_area_usaha, potensi_bisnis_lokasi, kepadatan_penduduk, daya_beli_lokasi)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            (client_id, rating, jumlah_ulasan, potensi_bisnis_lokasi, kepadatan_penduduk, daya_beli_lokasi)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """, (
-            client_id, features['frekuensi_transaksi'], features['nilai_transaksi_rata_rata'],
-            features['lama_usaha_bulan'], features['luas_area_usaha'], 
-            features['potensi_bisnis_lokasi'], features['kepadatan_penduduk'], 
+            client_id, 
+            features['rating'], 
+            features['jumlah_ulasan'],
+            features['potensi_bisnis_lokasi'], 
+            features['kepadatan_penduduk'], 
             features['daya_beli_lokasi']
         ))
         
@@ -642,7 +562,7 @@ def process_csv_upload(upload_id):
                 csv_reader = csv.DictReader(f)
                 
                 # Validate required columns
-                required_columns = ['nama', 'kategori_usaha', 'lokasi', 'riwayat_transaksi']
+                required_columns = ['nama', 'kategori_usaha', 'lokasi', 'rating', 'jumlah_ulasan']
                 if not all(col in csv_reader.fieldnames for col in required_columns):
                     raise Exception(f"CSV must contain columns: {', '.join(required_columns)}")
                 
@@ -652,31 +572,43 @@ def process_csv_upload(upload_id):
                         client_data = {
                             'nama': row.get('nama', '').strip(),
                             'nomor_telepon': row.get('nomor_telepon', '').strip(),
+                            'email': row.get('email', '').strip(),  # Tambahkan email
+                            'website': row.get('website', '').strip(),  # Tambahkan website
                             'kategori_usaha': row.get('kategori_usaha', '').strip(),
                             'lokasi': row.get('lokasi', '').strip(),
-                            'riwayat_transaksi': row.get('riwayat_transaksi', '').strip()
+                            'rating': float(row.get('rating', 0)),
+                            'jumlah_ulasan': int(row.get('jumlah_ulasan', 0))
                         }
                         
-                        # Skip row if essential data is missing
+                        # Skip row jika data penting kosong
                         if not client_data['nama'] or not client_data['kategori_usaha']:
+                            continue
+                        
+                        # Validate rating
+                        if client_data['rating'] < 0 or client_data['rating'] > 5:
+                            continue
+                        
+                        # Validate jumlah_ulasan
+                        if client_data['jumlah_ulasan'] < 0:
                             continue
                         
                         # Extract features and analyze
                         features = extract_features_from_data(client_data)
                         analysis_result = analyze_potential(features)
                         
-                        # Save to analysis results
+                         # Save to analysis results dengan email dan website
                         cursor.execute("""
                             INSERT INTO csv_analysis_results 
-                            (upload_id, client_name, phone_number, business_category, location, 
-                             transaction_history, potential_score, segmentation, priority, recommendation_category)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            (upload_id, client_name, phone_number, email, website, business_category, location, 
+                            rating, jumlah_ulasan, potential_score, segmentation, priority, recommendation_category)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         """, (
                             upload_id, client_data['nama'], client_data['nomor_telepon'],
+                            client_data['email'], client_data['website'],  # Tambahkan email dan website
                             client_data['kategori_usaha'], client_data['lokasi'],
-                            client_data['riwayat_transaksi'], analysis_result['skor_potensi'],
-                            analysis_result['segmentasi'], analysis_result['prioritas'],
-                            analysis_result['kategori_rekomendasi']
+                            client_data['rating'], client_data['jumlah_ulasan'],
+                            analysis_result['skor_potensi'], analysis_result['segmentasi'],
+                            analysis_result['prioritas'], analysis_result['kategori_rekomendasi']
                         ))
                         
                         processed_rows += 1
@@ -695,7 +627,7 @@ def process_csv_upload(upload_id):
         except Exception as e:
             cursor.execute("UPDATE csv_uploads SET status = 'failed' WHERE id = %s", (upload_id,))
             conn.commit()
-            return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
+            return jsonify ({'error': f'Failed to process CSV: {str(e)}'}), 500
         finally:
             cursor.close()
             conn.close()
@@ -759,7 +691,7 @@ def get_csv_results(upload_id):
 
 @app.route('/api/download-csv-results/<int:upload_id>', methods=['GET'])
 def download_csv_results(upload_id):
-    """Download CSV results"""
+    """Download CSV results - hanya kolom penting untuk download"""
     try:
         # Get results
         conn = get_db_connection()
@@ -774,20 +706,38 @@ def download_csv_results(upload_id):
         cursor.close()
         conn.close()
         
-        # Create CSV in memory
+        # Create CSV in memory - GABUNGAN LENGKAP
         output = io.StringIO()
-        fieldnames = ['client_name', 'phone_number', 'business_category', 'location', 
-                     'potential_score', 'segmentation', 'priority', 'recommendation_category']
+        fieldnames = [
+            'rank', 
+            'client_name', 
+            'phone_number', 
+            'email', 
+            'website',
+            'business_category', 
+            'location', 
+            'rating', 
+            'review_count',
+            'potential_score', 
+            'segmentation', 
+            'priority', 
+            'recommendation_category'
+        ]
         
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         
-        for result in results:
+        for i, result in enumerate(results):
             writer.writerow({
+                'rank': i + 1,
                 'client_name': result['client_name'],
-                'phone_number': result['phone_number'],
+                'phone_number': result['phone_number'] or '-',
+                'email': result['email'] or '-',
+                'website': result['website'] or '-',
                 'business_category': result['business_category'],
                 'location': result['location'],
+                'rating': result['rating'],
+                'review_count': result['jumlah_ulasan'],
                 'potential_score': result['potential_score'],
                 'segmentation': result['segmentation'],
                 'priority': result['priority'],

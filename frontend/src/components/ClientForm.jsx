@@ -78,7 +78,6 @@ const ClientForm = ({ onClientAdded }) => {
             name="nomor_telepon"
             value={formData.nomor_telepon}
             onChange={handleChange}
-            placeholder="081234567890"
           />
         </div>
 
@@ -115,14 +114,29 @@ const ClientForm = ({ onClientAdded }) => {
         </div>
 
         <div className="form-group">
-          <label>Riwayat Transaksi:</label>
-          <textarea
-            name="riwayat_transaksi"
-            value={formData.riwayat_transaksi}
+          <label>Rating (0-5):</label>
+          <input
+            type="number"
+            name="rating"
+            min="0"
+            max="5"
+            step="0.1"
+            value={formData.rating}
             onChange={handleChange}
-            rows="4"
-            placeholder="Deskripsi riwayat transaksi, contoh: '3 transaksi bulan lalu, rata-rata nilai 2 juta, sudah berjalan 2 tahun'"
-          ></textarea>
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Jumlah Ulasan:</label>
+          <input
+            type="number"
+            name="jumlah_ulasan"
+            min="0"
+            value={formData.jumlah_ulasan}
+            onChange={handleChange}
+            required
+          />
         </div>
 
         <button type="submit" disabled={loading}>
