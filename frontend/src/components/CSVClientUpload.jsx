@@ -1,4 +1,12 @@
+
 import React, { useState, useEffect } from "react";
+
+// Otomatisasi base URL backend Flask
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:5000"
+    : "");
 
 const CSVClientUpload = () => {
   const [file, setFile] = useState(null);
@@ -60,8 +68,9 @@ const CSVClientUpload = () => {
     formData.append("file", file);
 
     try {
+
       const response = await fetch(
-        "http://localhost:5000/api/upload-clients-csv",
+        `${API_BASE_URL}/api/upload-clients-csv`,
         {
           method: "POST",
           body: formData,
@@ -90,7 +99,7 @@ const CSVClientUpload = () => {
 
   const fetchUploads = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/csv-uploads");
+  const response = await fetch(`${API_BASE_URL}/api/csv-uploads`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -109,7 +118,7 @@ const CSVClientUpload = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/process-csv-upload/${uploadId}`,
+        `${API_BASE_URL}/api/process-csv-upload/${uploadId}`,
         {
           method: "POST",
           headers: {
@@ -151,7 +160,7 @@ const CSVClientUpload = () => {
     try {
       console.log(`Deleting upload ${uploadId}...`);
       const response = await fetch(
-        `http://localhost:5000/api/delete-csv-upload/${uploadId}`,
+        `${API_BASE_URL}/api/delete-csv-upload/${uploadId}`,
         {
           method: "DELETE",
         }
@@ -206,7 +215,7 @@ const CSVClientUpload = () => {
 
     try {
       const response = await fetch(
-        `http://localhost:5000/api/csv-results/${uploadId}`
+        `${API_BASE_URL}/api/csv-results/${uploadId}`
       );
 
       if (!response.ok) {
@@ -226,7 +235,7 @@ const CSVClientUpload = () => {
   const downloadResults = async (uploadId) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/download-csv-results/${uploadId}`
+        `${API_BASE_URL}/api/download-csv-results/${uploadId}`
       );
 
       if (response.ok) {

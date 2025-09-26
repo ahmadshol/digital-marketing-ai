@@ -1,8 +1,16 @@
 import os
 from dotenv import load_dotenv
+from config import Config
 
 # Load environment variables
 load_dotenv()
+    
+class DevelopmentConfig(Config):
+    FLASK_DEBUG = True
+
+class ProductionConfig(Config):
+    FLASK_DEBUG = False
+    FLASK_ENV = 'production'
 
 class Config:
     # Flask Configuration
@@ -36,6 +44,17 @@ class DevelopmentConfig(Config):
 class ProductionConfig(Config):
     FLASK_DEBUG = False
     FLASK_ENV = 'production'
+    
+    # Production database settings
+    DB_HOST = os.getenv('PRODUCTION_DB_HOST', 'localhost')
+    DB_USER = os.getenv('PRODUCTION_DB_USER', 'your_production_user')
+    DB_PASSWORD = os.getenv('PRODUCTION_DB_PASSWORD', '')
+    DB_NAME = os.getenv('PRODUCTION_DB_NAME', 'client_analysis_prod')
+    
+    # Production model paths
+    MODEL_PATH = os.path.join(os.path.dirname(__file__), 'models', 'potensi_model.joblib')
+    SCALER_PATH = os.path.join(os.path.dirname(__file__), 'models', 'scaler.joblib')
+    KMEANS_PATH = os.path.join(os.path.dirname(__file__), 'models', 'kmeans_model.joblib')
 
 def get_config():
     env = os.getenv('FLASK_ENV', 'development')

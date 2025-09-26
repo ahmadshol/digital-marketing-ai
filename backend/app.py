@@ -16,6 +16,14 @@ import re
 from dotenv import load_dotenv
 from config import get_config
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": os.getenv("CORS_ORIGINS", "*")}})
+
 # Load environment variables
 load_dotenv()
 
